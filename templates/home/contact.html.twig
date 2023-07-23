@@ -48,22 +48,34 @@
 
     <div class="row no-gutters block-9">
         <div class="col-md-6 order-md-last d-flex">
-            <form action="#" class="bg-light p-4 p-md-5 contact-form">
+            <form action="{{ path('contact_me') }}" class="bg-light p-4 p-md-5 contact-form" method="POST" id="contactForm">
+                {{ form_start(form) }}
                 <div class="form-group">
-                    <input type="text" class="form-control" placeholder="Your Name">
+                    {{ form_widget(form.fullName, { 'attr': {'class': 'form-control', 'placeholder': 'Your Name', 'pattern': '[a-zA-Z ]+', 'title': 'Enter a valid name'} }) }}
+                    <div class="invalid-feedback"></div> <!-- Error message for full name -->
                 </div>
                 <div class="form-group">
-                    <input type="text" class="form-control" placeholder="Your Email">
+                    {{ form_widget(form.email, { 'attr': {'class': 'form-control', 'placeholder': 'Your Email', 'type': 'email', 'title': 'Enter a valid email address'} }) }}
+                    <div class="invalid-feedback"></div> <!-- Error message for email -->
                 </div>
                 <div class="form-group">
-                    <input type="text" class="form-control" placeholder="Subject">
+                    {{ form_widget(form.subject, { 'attr': {'class': 'form-control', 'placeholder': 'Subject', 'pattern': '.{3,}', 'title': 'Enter at least 3 characters for the subject'} }) }}
+                    <div class="invalid-feedback"></div> <!-- Error message for subject -->
                 </div>
                 <div class="form-group">
-                    <textarea name="" id="" cols="30" rows="7" class="form-control" placeholder="Message"></textarea>
+                    {{ form_widget(form.message, { 'attr': {'class': 'form-control', 'placeholder': 'Message', 'cols': '30', 'rows': '7', 'pattern': '.{10,}', 'title': 'Enter at least 10 characters for the message'} }) }}
+                    <div class="invalid-feedback"></div> <!-- Error message for message -->
                 </div>
+                {{ form_row(form._token) }}
                 <div class="form-group">
-                    <input type="submit" value="Send Message" class="btn btn-primary py-3 px-5">
+                    <button type="button" onclick="submitForm()" class="btn btn-primary py-3 px-5" id="buttonText">
+                        <span id="buttonText">{{ button_label|default('Send Message') }}</span>
+                    </button>
+                    <div id="loader" style="display:none;" class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden"></span>
+                    </div>
                 </div>
+                {{ form_end(form) }}
             </form>
 
         </div>
@@ -73,3 +85,132 @@
         </div>
     </div>
 </div>
+
+<script>
+    function submitForm() {
+        // Show the loader and hide the button text
+        $('#loader').show();
+        $('#buttonText').hide();
+
+        // Target the form by its ID
+        var form = $('#contactForm');
+
+        // Perform client-side validation for each input field
+        var fullNameInput = $('#{{ form.fullName.vars.id }}');
+        var emailInput = $('#{{ form.email.vars.id }}');
+        var subjectInput = $('#{{ form.subject.vars.id }}');
+        var messageInput = $('#{{ form.message.vars.id }}');
+
+        // Remove invalid class if all fields are valid
+        fullNameInput.removeClass('is-invalid');
+        emailInput.removeClass('is-invalid');
+        subjectInput.removeClass('is-invalid');
+        messageInput.removeClass('is-invalid');
+
+
+        if (fullNameInput.val().trim() === '') {
+            // Display an error message for empty full name
+            fullNameInput.addClass('is-invalid');
+            fullNameInput.next('.invalid-feedback').text('Please enter your full name.');
+            $('#loader').hide();
+            $('#buttonText').show();
+            return;
+        }
+
+        if (fullNameInput.val().trim().length < 5) {
+            // Display an error message for empty full name
+            fullNameInput.addClass('is-invalid');
+            fullNameInput.next('.invalid-feedback').text('Please enter your full name correctly.');
+            $('#loader').hide();
+            $('#buttonText').show();
+            return;
+        }
+
+        if (emailInput.val().trim() === '' || !isValidEmail(emailInput.val())) {
+            // Display an error message for invalid email
+            emailInput.addClass('is-invalid');
+            emailInput.next('.invalid-feedback').text('Please enter your email correctly.');
+            $('#loader').hide();
+            $('#buttonText').show();
+            return;
+        }
+
+        if (subjectInput.val().trim() === '') {
+            // Display an error message for empty subject
+            subjectInput.addClass('is-invalid');
+            subjectInput.next('.invalid-feedback').text('Please enter your subject.');
+            $('#loader').hide();
+            $('#buttonText').show();
+            return;
+        }
+
+        if (messageInput.val().trim() === '' || messageInput.val().trim().length < 10) {
+            // Display an error message for invalid or too short message
+            messageInput.addClass('is-invalid');
+            messageInput.next('.invalid-feedback').text('Please enter your message.');
+            $('#loader').hide();
+            $('#buttonText').show();
+            return;
+        }
+
+        // Remove invalid class if all fields are valid
+        fullNameInput.removeClass('is-invalid');
+        emailInput.removeClass('is-invalid');
+        subjectInput.removeClass('is-invalid');
+        messageInput.removeClass('is-invalid');
+
+        // Continue with the AJAX request and form submission
+        var formData = form.serialize();
+
+        // Make an AJAX POST request to your Symfony controller
+        $.ajax({
+            url: '{{ path('contact_me') }}', // URL for the Symfony controller (replace 'contact_me' with the correct route name)
+            type: form.attr('method'), // HTTP method (POST in this case)
+            data: formData, // Form data to be sent
+            success: function (response) {
+                // Show SweetAlert popup to indicate the form submission success
+                if (response.success) {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Thank you for your message! We have received your message.',
+                        showConfirmButton: false,
+                        timer: 5000 // Popup display duration (in milliseconds)
+                    }).then(function() {
+                        // You can add further actions here, like redirecting to another page.
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Form submission failed.',
+                        text: 'Please check the form fields.',
+                        confirmButtonText: 'OK'
+                    });
+                }
+
+                // Hide the loader and show the button text again after the AJAX response
+                $('#loader').hide();
+                $('#buttonText').show();
+            },
+            error: function (xhr) {
+                // Handle errors, if any
+                //console.log(xhr.responseText); // Log the error response for debugging
+                Swal.fire({
+                    icon: 'error',
+                    title: 'An error occurred during send message.',
+                    confirmButtonText: 'OK'
+                });
+
+                // Hide the loader and show the button text again after the AJAX response
+                $('#loader').hide();
+                $('#buttonText').show();
+            }
+        });
+    }
+
+    // Helper function to validate email format
+    function isValidEmail(email) {
+        // Use a regular expression to validate email format
+        var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
+    }
+</script>
